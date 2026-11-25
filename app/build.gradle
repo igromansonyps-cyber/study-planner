@@ -1,2 +1,2 @@
 plugins { id 'com.android.application' version '8.7.3' }
-android { namespace 'ru.studyplanner.app'; compileSdk 35; defaultConfig { applicationId 'ru.studyplanner.app'; minSdk 26; targetSdk 32; versionCode 1; versionName '1.0' } }
+android { namespace 'ru.studyplanner.app'; compileSdk 35; defaultConfig { applicationId 'ru.studyplanner.app'; minSdk 26; targetSdk 35; versionCode 2; versionName '1.1' } }
