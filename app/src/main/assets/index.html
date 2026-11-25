@@ -1,0 +1,1678 @@
+<!DOCTYPE html>
+<html lang="ru" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#0f131c" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Учебный планер" />
+  <link id="pwaManifestLink" rel="manifest" />
+  <title>Учебный планер — Задания и Контрольные</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          },
+          colors: {
+            surface: {
+              950: '#090b10',
+              900: '#0f131c',
+              800: '#161b28',
+              700: '#1f2638',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      overscroll-behavior-y: none;
+    }
+    /* Custom subtle scrollbar */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.25);
+      border-radius: 9999px;
+    }
+    /* Voice recording waveform animation */
+    @keyframes wave {
+      0%, 100% { transform: scaleY(0.35); }
+      50% { transform: scaleY(1); }
+    }
+    .wave-bar {
+      animation: wave 0.9s ease-in-out infinite;
+    }
+    .wave-bar:nth-child(2) { animation-delay: 0.15s; }
+    .wave-bar:nth-child(3) { animation-delay: 0.3s; }
+    .wave-bar:nth-child(4) { animation-delay: 0.45s; }
+    .wave-bar:nth-child(5) { animation-delay: 0.6s; }
+
+    /* Push notification drop-in */
+    @keyframes slideDown {
+      from { transform: translate(-50%, -120%); opacity: 0; }
+      to { transform: translate(-50%, 0); opacity: 1; }
+    }
+    .toast-enter {
+      animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex justify-center items-start sm:py-4 selection:bg-indigo-500/30">
+
+  <!-- In-App Push Notification Banner (Top Overlay) -->
+  <div id="pushBanner" class="fixed top-3 left-1/2 -translate-x-1/2 w-[92%] max-w-[420px] z-50 hidden">
+    <div class="bg-slate-800/95 backdrop-blur-xl border border-indigo-500/40 shadow-2xl shadow-indigo-950/60 rounded-2xl p-3.5 flex items-start gap-3">
+      <div class="w-9 h-9 rounded-xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center shrink-0 text-indigo-300">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+        </svg>
+      </div>
+      <div class="flex-1 min-w-0">
+        <div class="flex items-center justify-between gap-2">
+          <span id="pushTitle" class="text-xs font-bold uppercase tracking-wider text-indigo-300">Уведомление</span>
+          <span class="text-[11px] text-slate-400">сейчас</span>
+        </div>
+        <p id="pushBody" class="text-sm text-slate-100 font-medium mt-0.5 leading-snug"></p>
+      </div>
+      <button onclick="hidePushBanner()" class="text-slate-400 hover:text-white p-1 rounded-lg">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Mobile App Container -->
+  <div class="w-full max-w-[460px] min-h-screen sm:min-h-[840px] sm:h-[880px] sm:max-h-[92vh] bg-surface-900 sm:rounded-[32px] sm:border sm:border-slate-800/90 sm:shadow-2xl flex flex-col relative overflow-hidden">
+
+    <!-- TOP STICKY HEADER + MONDAY-FIRST WEEK STRIP -->
+    <header class="sticky top-0 z-30 bg-surface-900/95 backdrop-blur-xl border-b border-slate-800/80 px-4 pt-3.5 pb-3">
+      <!-- Top Row: Title, Install PWA button, Notification Bell -->
+      <div class="flex items-center justify-between gap-2 mb-3">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-indigo-500 shadow-[0_0_10px_#6366f1] shrink-0"></span>
+            <h1 class="text-base font-extrabold tracking-tight text-white truncate">Учебный планер</h1>
+          </div>
+          <p id="weekRangeLabel" class="text-xs text-slate-400 font-medium mt-0.5">Загрузка недели...</p>
+        </div>
+
+        <div class="flex items-center gap-1.5 shrink-0">
+          <!-- Install to Home Screen Button -->
+          <button id="installHeaderBtn" onclick="handleInstallClick()" class="px-2.5 py-2 bg-indigo-600/20 hover:bg-indigo-600/35 border border-indigo-500/40 rounded-xl text-xs font-bold text-indigo-200 transition flex items-center gap-1">
+            <span>📲 На экран</span>
+          </button>
+
+          <!-- Notification Bell -->
+          <button onclick="toggleNotificationDrawer(true)" aria-label="Уведомления" class="relative p-2 bg-surface-800 border border-slate-700/70 hover:border-indigo-500/50 rounded-xl text-slate-200 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+            </svg>
+            <span id="bellBadge" class="hidden absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-[10px] font-bold text-white flex items-center justify-center shadow-md">0</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Compact 7-Column Monday-First Strip ("Маленькая колонка с понедельника") -->
+      <div id="weekStrip" class="grid grid-cols-7 gap-1 bg-surface-800/90 border border-slate-800 rounded-2xl p-1.5">
+        <!-- Rendered dynamically by JS (Пн -> Вс) -->
+      </div>
+    </header>
+
+    <!-- MAIN SCROLLABLE CONTENT AREA -->
+    <main id="mainScroll" class="flex-1 overflow-y-auto px-4 pt-3 pb-28 space-y-4">
+
+      <!-- Active 2-Day Warning Banner (Shown automatically when an item is <= 2 days away) -->
+      <div id="activeAlertBox" class="hidden bg-gradient-to-r from-amber-500/15 via-rose-500/10 to-indigo-500/15 border border-amber-400/35 rounded-2xl p-3 flex items-start gap-2.5">
+        <div class="w-8 h-8 rounded-xl bg-amber-500/20 text-amber-300 flex items-center justify-center shrink-0 mt-0.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
+          </svg>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-bold uppercase tracking-wider text-amber-300">Напоминание за 2 дня</span>
+            <button onclick="toggleNotificationDrawer(true)" class="text-[11px] text-indigo-300 hover:underline font-medium">Все алерты →</button>
+          </div>
+          <p id="activeAlertText" class="text-xs text-slate-200 mt-0.5 leading-relaxed"></p>
+        </div>
+      </div>
+
+      <!-- VOICE & AI SMART INPUT CARD -->
+      <section class="bg-surface-800/90 border border-slate-700/70 rounded-2xl p-3.5 shadow-lg shadow-black/20">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+            </svg>
+            Голосовой ИИ-помощник
+          </span>
+          <span id="aiStatusTag" class="text-[11px] text-slate-400">Скажи день и задачу</span>
+        </div>
+
+        <!-- Input Row: Mic Button + Text Field + Submit -->
+        <div class="flex items-center gap-2">
+          <button id="micBtn" onclick="toggleVoiceRecognition()" title="Записать голосом" class="w-11 h-11 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white flex items-center justify-center shrink-0 shadow-md shadow-indigo-600/30 transition">
+            <svg id="micIcon" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+            </svg>
+            <div id="waveAnim" class="hidden flex items-center gap-0.5 h-4">
+              <span class="wave-bar w-0.5 h-3.5 bg-white rounded-full"></span>
+              <span class="wave-bar w-0.5 h-4 bg-white rounded-full"></span>
+              <span class="wave-bar w-0.5 h-3 bg-white rounded-full"></span>
+              <span class="wave-bar w-0.5 h-4 bg-white rounded-full"></span>
+              <span class="wave-bar w-0.5 h-3 bg-white rounded-full"></span>
+            </div>
+          </button>
+
+          <div class="relative flex-1">
+            <input
+              id="taskInput"
+              type="text"
+              placeholder="Напр.: В пятницу сдать лабу, предупреди за 2 дня"
+              onkeydown="if(event.key==='Enter') handleSmartSubmit()"
+              class="w-full h-11 bg-surface-900 border border-slate-700/80 focus:border-indigo-500 rounded-xl pl-3 pr-9 text-xs sm:text-sm text-white placeholder-slate-500 outline-none transition"
+            />
+            <button id="clearInputBtn" onclick="document.getElementById('taskInput').value=''; this.classList.add('hidden')" class="hidden absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+
+          <button id="submitBtn" onclick="handleSmartSubmit()" class="h-11 px-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white text-xs font-bold shrink-0 shadow-md shadow-emerald-600/20 transition flex items-center gap-1">
+            <span>Добавить</span>
+          </button>
+        </div>
+
+        <!-- Options Row: 2-day advance reminder toggle + Quick Voice Phrase Chips -->
+        <div class="mt-2.5 flex items-center justify-between gap-2 flex-wrap">
+          <button id="remindToggleBtn" onclick="toggleDefaultRemind()" type="button" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition bg-indigo-500/20 border-indigo-400/50 text-indigo-200">
+            <span id="remindToggleDot" class="w-2 h-2 rounded-full bg-indigo-400"></span>
+            <span>Предупредить за 2 дня: ВКЛ</span>
+          </button>
+
+          <span class="text-[11px] text-slate-500">Или нажми на пример:</span>
+        </div>
+
+        <!-- Sample Voice Phrase Chips -->
+        <div class="mt-2 flex gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+          <button onclick="useSamplePhrase('В пятницу сдать лабу, предупреди за 2 дня')" class="shrink-0 text-[11px] bg-surface-900 hover:bg-slate-800 text-slate-300 border border-slate-700/80 rounded-xl px-2.5 py-1.5 transition text-left">
+            «В пятницу сдать лабу, за 2 дня»
+          </button>
+          <button onclick="useSamplePhrase('Контрольная в следующую среду')" class="shrink-0 text-[11px] bg-surface-900 hover:bg-slate-800 text-slate-300 border border-slate-700/80 rounded-xl px-2.5 py-1.5 transition text-left">
+            «Контрольная в следующую среду»
+          </button>
+          <button onclick="useSamplePhrase('Завтра сдать типовой расчёт')" class="shrink-0 text-[11px] bg-surface-900 hover:bg-slate-800 text-slate-300 border border-slate-700/80 rounded-xl px-2.5 py-1.5 transition text-left">
+            «Завтра сдать типовой расчёт»
+          </button>
+        </div>
+      </section>
+
+      <!-- TAB 1: БЛИЖАЙШИЕ СОБЫТИЯ (Default Screen) -->
+      <section id="viewUpcoming" class="space-y-3">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-extrabold text-white">Ближайшие события</h2>
+            <p class="text-[11px] text-slate-400">Только задания и контрольные по сроку сдачи</p>
+          </div>
+          <div class="flex items-center gap-1 bg-surface-800 border border-slate-700/70 rounded-xl p-0.5 text-[11px]">
+            <button id="filterAllBtn" onclick="setUpcomingFilter('all')" class="px-2 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition">Все</button>
+            <button id="filterTaskBtn" onclick="setUpcomingFilter('task')" class="px-2 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition">Задания</button>
+            <button id="filterExamBtn" onclick="setUpcomingFilter('exam')" class="px-2 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition">Контрольные</button>
+          </div>
+        </div>
+
+        <div id="upcomingList" class="space-y-2.5">
+          <!-- Rendered by JS -->
+        </div>
+      </section>
+
+      <!-- TAB 2: РАСПИСАНИЕ ПО ДНЯМ НЕДЕЛИ (Monday -> Sunday) -->
+      <section id="viewSchedule" class="hidden space-y-3">
+        <!-- Week Switcher Bar inside Schedule tab -->
+        <div class="bg-surface-800/90 border border-slate-700/70 rounded-2xl p-2 flex items-center justify-between gap-2">
+          <button onclick="changeWeek(-1)" class="px-3 py-1.5 rounded-xl bg-surface-900 hover:bg-slate-700/70 text-xs font-bold text-slate-200 transition">
+            ← Пред.
+          </button>
+          <button onclick="goToToday()" class="text-center flex-1">
+            <div id="scheduleWeekRange" class="text-xs font-extrabold text-white">Текущая неделя</div>
+            <div class="text-[10px] text-indigo-300 font-medium">Нажми, чтобы вернуться к текущей</div>
+          </button>
+          <button onclick="changeWeek(1)" class="px-3 py-1.5 rounded-xl bg-surface-900 hover:bg-slate-700/70 text-xs font-bold text-slate-200 transition">
+            След. →
+          </button>
+        </div>
+
+        <div class="flex items-center justify-between px-0.5">
+          <div>
+            <h2 class="text-sm font-extrabold text-white">План на неделю</h2>
+            <p id="scheduleSubtitle" class="text-[11px] text-slate-400">Понедельник — Воскресенье</p>
+          </div>
+          <button onclick="clearDemoItems()" id="clearDemoBtn" class="hidden text-[11px] text-slate-400 hover:text-rose-300 bg-surface-800 border border-slate-700/70 px-2.5 py-1 rounded-xl transition">
+            Очистить примеры
+          </button>
+        </div>
+
+        <div id="weeklyDaysList" class="space-y-2.5">
+          <!-- Rendered by JS: Monday through Sunday -->
+        </div>
+      </section>
+
+    </main>
+
+    <!-- BOTTOM NAVIGATION BAR ("Внизу основное меню: Ближайшие события и Расписание") -->
+    <nav class="fixed sm:absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[460px] bg-surface-900/95 backdrop-blur-xl border-t border-slate-800/90 px-4 py-2 z-30">
+      <div class="grid grid-cols-2 gap-2">
+        <button id="navUpcomingBtn" onclick="switchTab('upcoming')" class="flex flex-col items-center justify-center py-2 px-3 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 transition">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span class="text-xs font-bold">Ближайшие</span>
+          </div>
+          <span class="text-[10px] text-indigo-300/80 mt-0.5">Срочные задания</span>
+        </button>
+
+        <button id="navScheduleBtn" onclick="switchTab('schedule')" class="flex flex-col items-center justify-center py-2 px-3 rounded-2xl bg-surface-800/60 border border-transparent text-slate-400 hover:text-slate-200 transition">
+          <div class="flex items-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+            </svg>
+            <span class="text-xs font-bold">Расписание</span>
+          </div>
+          <span class="text-[10px] text-slate-500 mt-0.5">По дням недели</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- NOTIFICATION DRAWER MODAL -->
+    <div id="notificationDrawer" class="fixed sm:absolute inset-0 z-40 hidden">
+      <div onclick="toggleNotificationDrawer(false)" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+      <div class="absolute bottom-0 sm:bottom-auto sm:top-16 left-1/2 -translate-x-1/2 w-full max-w-[460px] bg-surface-900 border-t sm:border border-slate-700/80 rounded-t-3xl sm:rounded-3xl p-4 shadow-2xl max-h-[82vh] flex flex-col">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-300 flex items-center justify-center">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0" />
+              </svg>
+            </span>
+            <div>
+              <h3 class="text-sm font-extrabold text-white">Центр уведомлений (за 2 дня)</h3>
+              <p class="text-[11px] text-slate-400">Автоматические предупреждения перед сдачей</p>
+            </div>
+          </div>
+          <button onclick="toggleNotificationDrawer(false)" class="p-1.5 text-slate-400 hover:text-white rounded-xl bg-surface-800">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div id="notificationsList" class="flex-1 overflow-y-auto py-3 space-y-2.5">
+          <!-- Rendered dynamically -->
+        </div>
+
+        <div class="pt-2.5 border-t border-slate-800 space-y-2">
+          <div class="flex items-center justify-between text-[11px] px-1">
+            <span class="text-slate-400">Статус пуш-уведомлений:</span>
+            <span id="pushPermStatus" class="font-bold text-slate-200">Проверка...</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2">
+            <button onclick="enablePushNotifications()" class="py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/20">
+              ✅ Включить пуши
+            </button>
+            <button onclick="triggerTestPushNotification()" class="py-2.5 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg shadow-indigo-600/25">
+              🔔 Проверить пуш
+            </button>
+          </div>
+          <p class="text-[10px] text-slate-400 leading-relaxed px-1">
+            💡 Чтобы телефон прислал будильник за 2 дня даже при закрытом браузере, нажми <strong class="text-slate-200">«🔔 В календарь»</strong> на карточке задачи.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- INSTALL PWA TO ANDROID HOME SCREEN MODAL -->
+    <div id="installModal" class="fixed sm:absolute inset-0 z-50 hidden">
+      <div onclick="closeInstallModal()" class="absolute inset-0 bg-black/75 backdrop-blur-sm"></div>
+      <div class="absolute bottom-0 sm:bottom-auto sm:top-16 left-1/2 -translate-x-1/2 w-full max-w-[460px] bg-surface-900 border-t sm:border border-slate-700/80 rounded-t-3xl sm:rounded-3xl p-5 shadow-2xl space-y-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <div class="w-10 h-10 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-lg">📲</div>
+            <div>
+              <h3 class="text-sm font-extrabold text-white">Установить на рабочий стол</h3>
+              <p class="text-[11px] text-slate-400">Как отдельное приложение на телефон</p>
+            </div>
+          </div>
+          <button onclick="closeInstallModal()" class="p-1.5 text-slate-400 hover:text-white rounded-xl bg-surface-800">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <!-- Direct Native Install Button (shown when Android Chrome fires beforeinstallprompt) -->
+        <div id="nativeInstallBox" class="hidden bg-indigo-600/20 border border-indigo-500/40 rounded-2xl p-3.5 space-y-2.5">
+          <p class="text-xs text-indigo-100 font-medium">Твой браузер готов установить «Учебный планер» в один клик:</p>
+          <button onclick="triggerNativeInstallPrompt()" class="w-full py-2.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-extrabold shadow-lg shadow-indigo-600/30 transition">
+            Установить приложение сейчас
+          </button>
+        </div>
+
+        <!-- Step-by-step Android & iPhone instructions -->
+        <div class="space-y-2.5 text-xs">
+          <div class="bg-surface-800/90 border border-slate-700/70 rounded-2xl p-3.5 space-y-2">
+            <div class="font-extrabold text-emerald-300 flex items-center gap-1.5">
+              <span>🤖 Для Android (Google Chrome / Яндекс):</span>
+            </div>
+            <ol class="list-decimal list-inside space-y-1.5 text-slate-300 leading-relaxed">
+              <li>Если открыто внутри чата — нажми кнопку открытия в отдельном окне браузера (или скопируй адрес).</li>
+              <li>Нажми на <strong class="text-white">три точки (⋮)</strong> в правом верхнем углу браузера.</li>
+              <li>Выбери пункт <strong class="text-white">«Добавить на гл. экран»</strong> или <strong class="text-white">«Установить приложение»</strong>.</li>
+              <li>Подтверди — иконка <strong class="text-indigo-300">«Учебный планер»</strong> появится на рабочем столе телефона!</li>
+            </ol>
+          </div>
+
+          <div class="bg-surface-800/60 border border-slate-800 rounded-2xl p-3 space-y-1">
+            <div class="font-bold text-slate-300">🍎 Для iPhone (Safari):</div>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              Нажми <strong class="text-slate-200">«Поделиться» (квадрат со стрелкой вверх)</strong> внизу экрана → выбери <strong class="text-slate-200">«На экран „Домой“»</strong>.
+            </p>
+          </div>
+        </div>
+
+        <button onclick="closeInstallModal()" class="w-full py-2.5 rounded-xl bg-surface-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition">
+          Понятно, закрыть
+        </button>
+      </div>
+    </div>
+
+    <!-- QUICK ADD / EDIT MODAL FOR A SPECIFIC DAY -->
+    <div id="dayModal" class="fixed sm:absolute inset-0 z-40 hidden">
+      <div onclick="closeDayModal()" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+      <div class="absolute bottom-0 sm:bottom-auto sm:top-24 left-1/2 -translate-x-1/2 w-full max-w-[460px] bg-surface-900 border-t sm:border border-slate-700/80 rounded-t-3xl sm:rounded-3xl p-4 shadow-2xl space-y-3.5">
+        <div class="flex items-center justify-between">
+          <div>
+            <h3 id="dayModalTitle" class="text-sm font-extrabold text-white">Добавить на день</h3>
+            <p id="dayModalSubtitle" class="text-[11px] text-slate-400"></p>
+          </div>
+          <button onclick="closeDayModal()" class="p-1.5 text-slate-400 hover:text-white rounded-xl bg-surface-800">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <button type="button" id="modalTypeTask" onclick="setModalType('task')" class="py-2 px-3 rounded-xl text-xs font-bold border bg-indigo-600/20 border-indigo-500 text-indigo-200 transition">
+            📘 Задание
+          </button>
+          <button type="button" id="modalTypeExam" onclick="setModalType('exam')" class="py-2 px-3 rounded-xl text-xs font-bold border bg-surface-800 border-slate-700 text-slate-400 transition">
+            📝 Контрольная работа
+          </button>
+        </div>
+
+        <input id="modalTaskTitle" type="text" placeholder="Что нужно сделать или подготовить?" onkeydown="if(event.key==='Enter') saveModalTask()" class="w-full h-11 bg-surface-800 border border-slate-700 focus:border-indigo-500 rounded-xl px-3 text-sm text-white placeholder-slate-500 outline-none" />
+
+        <label class="flex items-center justify-between bg-surface-800/80 border border-slate-700/70 rounded-xl px-3 py-2.5 cursor-pointer">
+          <span class="text-xs font-medium text-slate-200">🔔 Предупредить за 2 дня до сдачи</span>
+          <input id="modalRemindCheck" type="checkbox" checked class="w-4 h-4 accent-indigo-500 rounded" />
+        </label>
+
+        <button onclick="saveModalTask()" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-lg shadow-emerald-600/25">
+          Сохранить в расписание
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // =========================================================================
+    // STATE & DATE UTILITIES (Monday-first week calendar)
+    // =========================================================================
+    const STORAGE_KEY = 'study_planner_tasks_v1';
+    const DAYS_SHORT = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+    const DAYS_FULL = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+    const DAYS_ACCUSATIVE = ['в понедельник', 'во вторник', 'в среду', 'в четверг', 'в пятницу', 'в субботу', 'в воскресенье'];
+    const MONTHS_SHORT = ['янв.', 'февр.', 'мар.', 'апр.', 'мая', 'июн.', 'июл.', 'авг.', 'сент.', 'окт.', 'нояб.', 'дек.'];
+
+    function getLocalDateStr(dateObj) {
+      const y = dateObj.getFullYear();
+      const m = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dateObj.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function parseLocalDate(dateStr) {
+      const [y, m, d] = dateStr.split('-').map(Number);
+      return new Date(y, m - 1, d);
+    }
+
+    function addDays(dateObj, days) {
+      const copy = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+      copy.setDate(copy.getDate() + days);
+      return copy;
+    }
+
+    // Returns Monday (index 0) of the week containing `dateObj`
+    function getMondayOfWeek(dateObj) {
+      const copy = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+      const jsDay = copy.getDay(); // 0 (Sun) .. 6 (Sat)
+      const diff = jsDay === 0 ? -6 : 1 - jsDay;
+      copy.setDate(copy.getDate() + diff);
+      return copy;
+    }
+
+    // Returns 0 for Monday .. 6 for Sunday
+    function getMondayIndex(dateObj) {
+      const jsDay = dateObj.getDay();
+      return jsDay === 0 ? 6 : jsDay - 1;
+    }
+
+    function formatShortDate(dateObj) {
+      return `${dateObj.getDate()} ${MONTHS_SHORT[dateObj.getMonth()]}`;
+    }
+
+    function diffInCalendarDays(fromDateObj, toDateObj) {
+      const a = new Date(fromDateObj.getFullYear(), fromDateObj.getMonth(), fromDateObj.getDate());
+      const b = new Date(toDateObj.getFullYear(), toDateObj.getMonth(), toDateObj.getDate());
+      return Math.round((b - a) / (1000 * 60 * 60 * 24));
+    }
+
+    const TODAY = new Date();
+    const TODAY_STR = getLocalDateStr(TODAY);
+
+    let state = {
+      currentTab: 'upcoming', // 'upcoming' | 'schedule'
+      upcomingFilter: 'all',  // 'all' | 'task' | 'exam'
+      weekOffset: 0,          // 0 = current week starting Monday
+      selectedDateStr: TODAY_STR,
+      defaultRemind2Days: true,
+      modalDateStr: TODAY_STR,
+      modalType: 'task',
+      tasks: []
+    };
+
+    // =========================================================================
+    // INITIALIZATION & SEED DATA
+    // =========================================================================
+    let deferredInstallPrompt = null;
+    let swRegistration = null;
+
+    function setupPWA() {
+      // 1. Generate SVG App Icon as Data URI for Web App Manifest
+      const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+        <rect width="512" height="512" rx="112" fill="#0f131c"/>
+        <rect x="36" y="36" width="440" height="440" rx="92" fill="#4f46e5" fill-opacity="0.18" stroke="#6366f1" stroke-width="14"/>
+        <rect x="120" y="136" width="272" height="256" rx="36" fill="#161b28" stroke="#818cf8" stroke-width="16"/>
+        <path d="M184 104v56M328 104v56M120 208h272" stroke="#818cf8" stroke-width="18" stroke-linecap="round"/>
+        <path d="M192 288l44 44 88-88" fill="none" stroke="#34d399" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>`;
+      const iconUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(iconSvg);
+
+      // 2. Inline Web App Manifest for Android "Install App / Add to Home Screen"
+      const manifest = {
+        name: 'Учебный планер — Задания и Контрольные',
+        short_name: 'Учебный планер',
+        description: 'Умный трекер заданий и контрольных работ с голосовым вводом и напоминаниями за 2 дня',
+        start_url: window.location.href,
+        display: 'standalone',
+        background_color: '#090b10',
+        theme_color: '#0f131c',
+        orientation: 'portrait',
+        icons: [
+          { src: iconUrl, sizes: '192x192', type: 'image/svg+xml', purpose: 'any maskable' },
+          { src: iconUrl, sizes: '512x512', type: 'image/svg+xml', purpose: 'any maskable' }
+        ]
+      };
+
+      try {
+        const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+        const manifestUrl = URL.createObjectURL(manifestBlob);
+        document.getElementById('pwaManifestLink').setAttribute('href', manifestUrl);
+      } catch (e) {}
+
+      // 3. Inline Service Worker for Standalone PWA & Mobile Push Notifications
+      if ('serviceWorker' in navigator) {
+        const swCode = `
+          self.addEventListener('install', (e) => self.skipWaiting());
+          self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
+          self.addEventListener('fetch', (e) => {});
+          self.addEventListener('notificationclick', (e) => {
+            e.notification.close();
+            e.waitUntil(
+              self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+                if (clients.length > 0) return clients[0].focus();
+                return self.clients.openWindow('./');
+              })
+            );
+          });
+        `;
+        try {
+          const swBlob = new Blob([swCode], { type: 'application/javascript' });
+          const swUrl = URL.createObjectURL(swBlob);
+          navigator.serviceWorker.register(swUrl).then((reg) => {
+            swRegistration = reg;
+          }).catch(() => {});
+        } catch (e) {}
+      }
+
+      // 4. Listen for native Android Chrome install prompt
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        deferredInstallPrompt = e;
+        const nativeBox = document.getElementById('nativeInstallBox');
+        if (nativeBox) nativeBox.classList.remove('hidden');
+      });
+
+      window.addEventListener('appinstalled', () => {
+        deferredInstallPrompt = null;
+        closeInstallModal();
+        showPushBanner('📲 Установлено!', '«Учебный планер» добавлен на рабочий стол телефона.');
+      });
+    }
+
+    function handleInstallClick() {
+      const nativeBox = document.getElementById('nativeInstallBox');
+      if (deferredInstallPrompt) {
+        nativeBox.classList.remove('hidden');
+      }
+      document.getElementById('installModal').classList.remove('hidden');
+    }
+
+    function closeInstallModal() {
+      document.getElementById('installModal').classList.add('hidden');
+    }
+
+    async function triggerNativeInstallPrompt() {
+      if (!deferredInstallPrompt) return;
+      deferredInstallPrompt.prompt();
+      const choice = await deferredInstallPrompt.userChoice;
+      if (choice.outcome === 'accepted') {
+        deferredInstallPrompt = null;
+        closeInstallModal();
+      }
+    }
+
+    function initApp() {
+      setupPWA();
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          state.tasks = JSON.parse(saved);
+        } catch (e) {
+          state.tasks = [];
+        }
+      } else {
+        // Seed 3 realistic items relative to today so user immediately sees 2-day alert + empty days
+        const inTwoDays = addDays(TODAY, 2);
+        const inFourDays = addDays(TODAY, 4);
+        const tomorrow = addDays(TODAY, 1);
+
+        state.tasks = [
+          {
+            id: 'demo-1',
+            title: 'Сдать лабораторную работу №3 по физике',
+            type: 'task',
+            dueDate: getLocalDateStr(inTwoDays),
+            remind2DaysBefore: true,
+            completed: false,
+            isDemo: true
+          },
+          {
+            id: 'demo-2',
+            title: 'Контрольная работа по высшей математике (интегралы)',
+            type: 'exam',
+            dueDate: getLocalDateStr(inFourDays),
+            remind2DaysBefore: true,
+            completed: false,
+            isDemo: true
+          },
+          {
+            id: 'demo-3',
+            title: 'Подготовить конспект и решить задачи по информатике',
+            type: 'task',
+            dueDate: getLocalDateStr(tomorrow),
+            remind2DaysBefore: false,
+            completed: false,
+            isDemo: true
+          }
+        ];
+        saveTasks();
+      }
+
+      // Show clear input button when typing
+      const inputEl = document.getElementById('taskInput');
+      inputEl.addEventListener('input', () => {
+        const clearBtn = document.getElementById('clearInputBtn');
+        if (inputEl.value.trim().length > 0) clearBtn.classList.remove('hidden');
+        else clearBtn.classList.add('hidden');
+      });
+
+      renderAll();
+      checkAndSurfaceAutoAlerts();
+    }
+
+    function saveTasks() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.tasks));
+    }
+
+    function clearDemoItems() {
+      state.tasks = state.tasks.filter(t => !t.isDemo);
+      saveTasks();
+      renderAll();
+      showPushBanner('Готово', 'Тестовые примеры удалены. Теперь здесь только твои задачи.');
+    }
+
+    // =========================================================================
+    // AI PARSER (Gemini API + Rock-Solid Russian NLP Fallback)
+    // =========================================================================
+    async function parseRussianVoiceCommand(rawText) {
+      const apiKey = ""; // Provided at runtime in Canvas environment if available
+      const currentMonday = getMondayOfWeek(TODAY);
+      const nextMonday = addDays(currentMonday, 7);
+
+      // Build reference calendar for next 14 days so AI maps exact dates accurately
+      let calendarRef = [];
+      for (let i = -2; i < 14; i++) {
+        const d = addDays(TODAY, i);
+        calendarRef.push(`${getLocalDateStr(d)} (${DAYS_FULL[getMondayIndex(d)]})`);
+      }
+
+      if (apiKey) {
+        try {
+          const systemPrompt = `Ты умный учебный ассистент студента. Твоя задача — разобрать голосовую или текстовую фразу на русском языке и вернуть JSON.
+Сегодня: ${TODAY_STR} (${DAYS_FULL[getMondayIndex(TODAY)]}).
+Календарь ближайших дней: ${calendarRef.join(', ')}.
+Правила:
+1. "type": строго "exam" (если упоминается контрольная, зачет, тест, коллоквиум, экзамен, проверочная) или "task" (все остальные задания, домашки, лабы, рефераты, задачи).
+2. "dueDate": точная дата в формате YYYY-MM-DD, на которую нужно поставить задачу. Если день недели не указан, ставь на завтра (${getLocalDateStr(addDays(TODAY, 1))}). Если сказано "в пятницу", выбери ближайшую пятницу; если "в следующую среду" — среду следующей недели.
+3. "remind2DaysBefore": true, если пользователь просит предупредить/напомнить заранее или за 2 дня, либо если по умолчанию включено (${state.defaultRemind2Days}).
+4. "title": очищенная, аккуратная формулировка задания или темы контрольной с заглавной буквы (без слов-паразитов вроде "напомни", "поставь на пятницу", "предупреди за 2 дня").`;
+
+          const payload = {
+            contents: [{ parts: [{ text: rawText }] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+            generationConfig: {
+              responseMimeType: "application/json",
+              responseSchema: {
+                type: "OBJECT",
+                properties: {
+                  title: { type: "STRING" },
+                  type: { type: "STRING", enum: ["task", "exam"] },
+                  dueDate: { type: "STRING" },
+                  remind2DaysBefore: { type: "BOOLEAN" }
+                },
+                required: ["title", "type", "dueDate", "remind2DaysBefore"]
+              }
+            }
+          };
+
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            const jsonText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (jsonText) {
+              const parsed = JSON.parse(jsonText);
+              if (parsed.title && parsed.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(parsed.dueDate)) {
+                return parsed;
+              }
+            }
+          }
+        } catch (err) {
+          // Silently fall back to deterministic local Russian parser
+        }
+      }
+
+      return localRussianParser(rawText);
+    }
+
+    function localRussianParser(text) {
+      const lower = text.toLowerCase();
+
+      // 1. Determine type: exam vs task
+      const isExam = /(контрольн|\bкр\b|проверочн|\bтест\w*|коллоквиум|зач[её]т|экзамен|рубежк)/i.test(lower);
+      const type = isExam ? 'exam' : 'task';
+
+      // 2. Determine 2-day advance reminder
+      const explicitRemind = /(за\s*(2|два)\s*дн|предупред|напомн|заранее)/i.test(lower);
+      const explicitNoRemind = /(без\s*напоминан|не\s*предупрежд|не\s*напомина)/i.test(lower);
+      const remind2DaysBefore = explicitNoRemind ? false : (explicitRemind || state.defaultRemind2Days);
+
+      // 3. Determine target date (Monday-first logic + relative "через N дней" + explicit dates)
+      let targetDate = addDays(TODAY, 1); // default to tomorrow if unspecified
+      const isNextWeek = /(на\s+следующ|в\s+следующ|следующ(ий|ую|ее)\s+(понедельник|вторник|среду|четверг|пятницу|субботу|воскресенье))/i.test(lower);
+
+      const weekdayPatterns = [
+        { idx: 0, regex: /(понедельник\w*)/i },
+        { idx: 1, regex: /(вторник\w*)/i },
+        { idx: 2, regex: /(сред[ауеы]\w*)/i },
+        { idx: 3, regex: /(четверг\w*)/i },
+        { idx: 4, regex: /(пятниц\w*)/i },
+        { idx: 5, regex: /(суббот\w*)/i },
+        { idx: 6, regex: /(воскресен\w*)/i }
+      ];
+
+      let matchedWeekday = null;
+      for (const wp of weekdayPatterns) {
+        if (wp.regex.test(lower)) {
+          matchedWeekday = wp.idx;
+          break;
+        }
+      }
+
+      const monthNamesGenitive = [
+        'январ', 'феврал', 'март', 'апрел', 'ма[йя]', 'июн',
+        'июл', 'август', 'сентябр', 'октябр', 'ноябр', 'декабр'
+      ];
+      let matchedMonthDate = null;
+      for (let mIdx = 0; mIdx < monthNamesGenitive.length; mIdx++) {
+        const mRegex = new RegExp(`(\\d{1,2})\\s+${monthNamesGenitive[mIdx]}\\w*`, 'i');
+        const mMatch = lower.match(mRegex);
+        if (mMatch) {
+          const dayNum = parseInt(mMatch[1], 10);
+          let yearNum = TODAY.getFullYear();
+          const candidate = new Date(yearNum, mIdx, dayNum);
+          if (diffInCalendarDays(TODAY, candidate) < -30) {
+            candidate.setFullYear(yearNum + 1);
+          }
+          matchedMonthDate = candidate;
+          break;
+        }
+      }
+
+      const numericDateMatch = lower.match(/\b(\d{1,2})\.(\d{1,2})(?:\.(\d{2,4}))?\b/);
+      const inNDaysMatch = lower.match(/через\s+(\d+)\s*(?:день|дня|дней)/i);
+
+      if (matchedMonthDate) {
+        targetDate = matchedMonthDate;
+      } else if (numericDateMatch) {
+        const dNum = parseInt(numericDateMatch[1], 10);
+        const mNum = parseInt(numericDateMatch[2], 10) - 1;
+        let yNum = numericDateMatch[3] ? parseInt(numericDateMatch[3], 10) : TODAY.getFullYear();
+        if (yNum < 100) yNum += 2000;
+        targetDate = new Date(yNum, mNum, dNum);
+      } else if (inNDaysMatch) {
+        targetDate = addDays(TODAY, parseInt(inNDaysMatch[1], 10));
+      } else if (/послезавтра/i.test(lower)) {
+        targetDate = addDays(TODAY, 2);
+      } else if (/завтра/i.test(lower)) {
+        targetDate = addDays(TODAY, 1);
+      } else if (/сегодня/i.test(lower)) {
+        targetDate = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate());
+      } else if (matchedWeekday !== null) {
+        const currentMonday = getMondayOfWeek(TODAY);
+        let candidate = addDays(currentMonday, matchedWeekday);
+        if (isNextWeek) {
+          candidate = addDays(currentMonday, 7 + matchedWeekday);
+        } else if (diffInCalendarDays(TODAY, candidate) < 0) {
+          // If that weekday already passed this week, move to next week
+          candidate = addDays(candidate, 7);
+        }
+        targetDate = candidate;
+      }
+
+      // 4. Clean up title
+      let cleaned = text
+        .replace(/,?\s*(и\s+)?(предупреди|напомни)(\s+меня)?(\s+пожалуйста)?(\s+за\s*(2|два)\s*дня)?(\s+до\s+сдачи)?/gi, '')
+        .replace(/,?\s*за\s*(2|два)\s*дня(\s+до\s+сдачи)?/gi, '')
+        .replace(/^(поставь|запиши|добавь|нужно|надо)\s+/i, '')
+        .replace(/\b(на|в|во|к)\s+(следующ(ий|ую|ее)\s+)?(понедельник|вторник|среду|четверг|пятницу|субботу|воскресенье)\b/gi, '')
+        .replace(/\bчерез\s+\d+\s*(?:день|дня|дней)\b/gi, '')
+        .replace(/\b\d{1,2}\.\d{1,2}(?:\.\d{2,4})?\b/g, '')
+        .replace(/\b(сегодня|завтра|послезавтра)\b/gi, '')
+        .replace(/\s{2,}/g, ' ')
+        .replace(/^[,\s.-]+|[,\s.-]+$/g, '')
+        .trim();
+
+      if (!cleaned) {
+        cleaned = isExam ? 'Контрольная работа' : 'Учебное задание';
+      } else {
+        cleaned = cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+      }
+
+      return {
+        title: cleaned,
+        type,
+        dueDate: getLocalDateStr(targetDate),
+        remind2DaysBefore
+      };
+    }
+
+    async function handleSmartSubmit() {
+      const inputEl = document.getElementById('taskInput');
+      const rawText = inputEl.value.trim();
+      if (!rawText) {
+        inputEl.focus();
+        return;
+      }
+
+      const submitBtn = document.getElementById('submitBtn');
+      const statusTag = document.getElementById('aiStatusTag');
+      submitBtn.disabled = true;
+      submitBtn.innerHTML = `<span class="animate-pulse">Анализ...</span>`;
+      statusTag.textContent = 'ИИ определяет день недели...';
+      statusTag.classList.add('text-indigo-300');
+
+      const parsed = await parseRussianVoiceCommand(rawText);
+
+      const newItem = {
+        id: 'item-' + Date.now(),
+        title: parsed.title,
+        type: parsed.type,
+        dueDate: parsed.dueDate,
+        remind2DaysBefore: parsed.remind2DaysBefore,
+        completed: false,
+        isDemo: false
+      };
+
+      state.tasks.push(newItem);
+      saveTasks();
+
+      // Jump calendar view to the week of the newly added task
+      const dueObj = parseLocalDate(newItem.dueDate);
+      const targetMonday = getMondayOfWeek(dueObj);
+      const currentMonday = getMondayOfWeek(TODAY);
+      state.weekOffset = Math.round(diffInCalendarDays(currentMonday, targetMonday) / 7);
+      state.selectedDateStr = newItem.dueDate;
+
+      inputEl.value = '';
+      document.getElementById('clearInputBtn').classList.add('hidden');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<span>Добавить</span>`;
+      statusTag.textContent = 'Скажи день и задачу';
+      statusTag.classList.remove('text-indigo-300');
+
+      renderAll();
+
+      const dayIdx = getMondayIndex(dueObj);
+      const typeLabel = newItem.type === 'exam' ? 'Контрольная работа' : 'Задание';
+      const remindDateStr = formatShortDate(addDays(dueObj, -2));
+      const remindMsg = newItem.remind2DaysBefore
+        ? ` Уведомление придёт за 2 дня (${remindDateStr}).`
+        : '';
+
+      showPushBanner(
+        `${typeLabel} добавлено ${DAYS_ACCUSATIVE[dayIdx]}`,
+        `«${newItem.title}» — ${formatShortDate(dueObj)}.${remindMsg}`
+      );
+    }
+
+    function useSamplePhrase(phrase) {
+      const inputEl = document.getElementById('taskInput');
+      inputEl.value = phrase;
+      document.getElementById('clearInputBtn').classList.remove('hidden');
+      handleSmartSubmit();
+    }
+
+    // =========================================================================
+    // VOICE RECOGNITION (Web Speech API ru-RU)
+    // =========================================================================
+    let recognition = null;
+    let isListening = false;
+
+    function toggleVoiceRecognition() {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        showPushBanner(
+          'Голосовой ввод',
+          'Браузер не поддерживает микрофон в этом окне. Нажми на любой пример под строкой ввода или напиши текстом!'
+        );
+        return;
+      }
+
+      if (isListening && recognition) {
+        recognition.stop();
+        return;
+      }
+
+      recognition = new SpeechRecognition();
+      recognition.lang = 'ru-RU';
+      recognition.interimResults = true;
+      recognition.maxAlternatives = 1;
+
+      const micBtn = document.getElementById('micBtn');
+      const micIcon = document.getElementById('micIcon');
+      const waveAnim = document.getElementById('waveAnim');
+      const statusTag = document.getElementById('aiStatusTag');
+      const inputEl = document.getElementById('taskInput');
+
+      recognition.onstart = () => {
+        isListening = true;
+        micBtn.classList.remove('bg-indigo-600', 'hover:bg-indigo-500');
+        micBtn.classList.add('bg-rose-600', 'ring-4', 'ring-rose-500/30');
+        micIcon.classList.add('hidden');
+        waveAnim.classList.remove('hidden');
+        statusTag.textContent = 'Слушаю... говори задание и день';
+        statusTag.classList.add('text-rose-300');
+      };
+
+      recognition.onresult = (event) => {
+        let transcript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        inputEl.value = transcript;
+        if (transcript.trim()) {
+          document.getElementById('clearInputBtn').classList.remove('hidden');
+        }
+      };
+
+      recognition.onerror = () => {
+        stopListeningUI();
+      };
+
+      recognition.onend = () => {
+        const hasText = inputEl.value.trim().length > 0;
+        stopListeningUI();
+        if (hasText) {
+          handleSmartSubmit();
+        }
+      };
+
+      try {
+        recognition.start();
+      } catch (e) {
+        stopListeningUI();
+      }
+    }
+
+    function stopListeningUI() {
+      isListening = false;
+      const micBtn = document.getElementById('micBtn');
+      const micIcon = document.getElementById('micIcon');
+      const waveAnim = document.getElementById('waveAnim');
+      const statusTag = document.getElementById('aiStatusTag');
+
+      micBtn.classList.add('bg-indigo-600', 'hover:bg-indigo-500');
+      micBtn.classList.remove('bg-rose-600', 'ring-4', 'ring-rose-500/30');
+      micIcon.classList.remove('hidden');
+      waveAnim.classList.add('hidden');
+      statusTag.textContent = 'Скажи день и задачу';
+      statusTag.classList.remove('text-rose-300');
+    }
+
+    // =========================================================================
+    // NAVIGATION & WEEK CONTROLS
+    // =========================================================================
+    function switchTab(tab) {
+      state.currentTab = tab;
+      const upView = document.getElementById('viewUpcoming');
+      const schView = document.getElementById('viewSchedule');
+      const navUp = document.getElementById('navUpcomingBtn');
+      const navSch = document.getElementById('navScheduleBtn');
+
+      if (tab === 'upcoming') {
+        upView.classList.remove('hidden');
+        schView.classList.add('hidden');
+        navUp.className = 'flex flex-col items-center justify-center py-2 px-3 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 transition';
+        navSch.className = 'flex flex-col items-center justify-center py-2 px-3 rounded-2xl bg-surface-800/60 border border-transparent text-slate-400 hover:text-slate-200 transition';
+      } else {
+        upView.classList.add('hidden');
+        schView.classList.remove('hidden');
+        navSch.className = 'flex flex-col items-center justify-center py-2 px-3 rounded-2xl bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 transition';
+        navUp.className = 'flex flex-col items-center justify-center py-2 px-3 rounded-2xl bg-surface-800/60 border border-transparent text-slate-400 hover:text-slate-200 transition';
+      }
+      renderAll();
+    }
+
+    function changeWeek(delta) {
+      state.weekOffset += delta;
+      const monday = addDays(getMondayOfWeek(TODAY), state.weekOffset * 7);
+      state.selectedDateStr = getLocalDateStr(monday);
+      renderAll();
+    }
+
+    function goToToday() {
+      state.weekOffset = 0;
+      state.selectedDateStr = TODAY_STR;
+      renderAll();
+    }
+
+    function selectDayFromStrip(dateStr) {
+      state.selectedDateStr = dateStr;
+      // Switch to Schedule view automatically when user taps a specific weekday in the top bar
+      if (state.currentTab !== 'schedule') {
+        switchTab('schedule');
+      } else {
+        renderAll();
+      }
+      // Scroll smoothly to that day card in schedule view
+      setTimeout(() => {
+        const card = document.getElementById(`day-card-${dateStr}`);
+        if (card) {
+          card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 60);
+    }
+
+    function toggleDefaultRemind() {
+      state.defaultRemind2Days = !state.defaultRemind2Days;
+      const btn = document.getElementById('remindToggleBtn');
+      const dot = document.getElementById('remindToggleDot');
+      if (state.defaultRemind2Days) {
+        btn.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition bg-indigo-500/20 border-indigo-400/50 text-indigo-200';
+        dot.className = 'w-2 h-2 rounded-full bg-indigo-400';
+        btn.querySelector('span:last-child').textContent = 'Предупредить за 2 дня: ВКЛ';
+      } else {
+        btn.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition bg-surface-900 border-slate-700 text-slate-400';
+        dot.className = 'w-2 h-2 rounded-full bg-slate-600';
+        btn.querySelector('span:last-child').textContent = 'Предупредить за 2 дня: ВЫКЛ';
+      }
+    }
+
+    function setUpcomingFilter(filter) {
+      state.upcomingFilter = filter;
+      const map = { all: 'filterAllBtn', task: 'filterTaskBtn', exam: 'filterExamBtn' };
+      Object.entries(map).forEach(([key, id]) => {
+        const el = document.getElementById(id);
+        if (key === filter) {
+          el.className = 'px-2 py-1 rounded-lg font-semibold bg-indigo-600 text-white transition';
+        } else {
+          el.className = 'px-2 py-1 rounded-lg font-semibold text-slate-400 hover:text-white transition';
+        }
+      });
+      renderUpcoming();
+    }
+
+    // =========================================================================
+    // TASK ACTIONS (Complete, Delete, Toggle 2-day alert, Modal Add)
+    // =========================================================================
+    function toggleTaskComplete(id) {
+      const task = state.tasks.find(t => t.id === id);
+      if (task) {
+        task.completed = !task.completed;
+        saveTasks();
+        renderAll();
+      }
+    }
+
+    function toggleTaskRemind(id) {
+      const task = state.tasks.find(t => t.id === id);
+      if (task) {
+        task.remind2DaysBefore = !task.remind2DaysBefore;
+        saveTasks();
+        renderAll();
+        if (task.remind2DaysBefore) {
+          const remindDate = formatShortDate(addDays(parseLocalDate(task.dueDate), -2));
+          showPushBanner('Напоминание включено', `Предупрежу за 2 дня (${remindDate}) о «${task.title}»`);
+        }
+      }
+    }
+
+    function deleteTask(id) {
+      state.tasks = state.tasks.filter(t => t.id !== id);
+      saveTasks();
+      renderAll();
+    }
+
+    function openDayModal(dateStr) {
+      state.modalDateStr = dateStr;
+      const dateObj = parseLocalDate(dateStr);
+      const dayName = DAYS_FULL[getMondayIndex(dateObj)];
+      document.getElementById('dayModalTitle').textContent = `${dayName}, ${formatShortDate(dateObj)}`;
+      document.getElementById('dayModalSubtitle').textContent = 'Добавить задание или контрольную работу';
+      document.getElementById('modalTaskTitle').value = '';
+      document.getElementById('modalRemindCheck').checked = state.defaultRemind2Days;
+      setModalType('task');
+      document.getElementById('dayModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('modalTaskTitle').focus(), 50);
+    }
+
+    function closeDayModal() {
+      document.getElementById('dayModal').classList.add('hidden');
+    }
+
+    function setModalType(type) {
+      state.modalType = type;
+      const tBtn = document.getElementById('modalTypeTask');
+      const eBtn = document.getElementById('modalTypeExam');
+      if (type === 'task') {
+        tBtn.className = 'py-2 px-3 rounded-xl text-xs font-bold border bg-indigo-600/20 border-indigo-500 text-indigo-200 transition';
+        eBtn.className = 'py-2 px-3 rounded-xl text-xs font-bold border bg-surface-800 border-slate-700 text-slate-400 transition';
+      } else {
+        eBtn.className = 'py-2 px-3 rounded-xl text-xs font-bold border bg-amber-500/20 border-amber-500 text-amber-200 transition';
+        tBtn.className = 'py-2 px-3 rounded-xl text-xs font-bold border bg-surface-800 border-slate-700 text-slate-400 transition';
+      }
+    }
+
+    function saveModalTask() {
+      const titleInput = document.getElementById('modalTaskTitle');
+      const title = titleInput.value.trim();
+      if (!title) {
+        titleInput.focus();
+        return;
+      }
+      const remind = document.getElementById('modalRemindCheck').checked;
+      state.tasks.push({
+        id: 'item-' + Date.now(),
+        title: title.charAt(0).toUpperCase() + title.slice(1),
+        type: state.modalType,
+        dueDate: state.modalDateStr,
+        remind2DaysBefore: remind,
+        completed: false,
+        isDemo: false
+      });
+      saveTasks();
+      closeDayModal();
+      renderAll();
+    }
+
+    // =========================================================================
+    // 2-DAY ADVANCE NOTIFICATION SYSTEM
+    // =========================================================================
+    function getTriggered2DayAlerts() {
+      return state.tasks.filter(task => {
+        if (task.completed || !task.remind2DaysBefore) return false;
+        const due = parseLocalDate(task.dueDate);
+        const daysLeft = diffInCalendarDays(TODAY, due);
+        // Active alert if due in 0, 1, or 2 days
+        return daysLeft >= 0 && daysLeft <= 2;
+      });
+    }
+
+    function getAllScheduled2DayAlerts() {
+      return state.tasks
+        .filter(t => !t.completed && t.remind2DaysBefore)
+        .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    }
+
+    function checkAndSurfaceAutoAlerts() {
+      const triggered = getTriggered2DayAlerts();
+      const box = document.getElementById('activeAlertBox');
+      const textEl = document.getElementById('activeAlertText');
+      const badge = document.getElementById('bellBadge');
+
+      if (triggered.length > 0) {
+        badge.textContent = triggered.length;
+        badge.classList.remove('hidden');
+        box.classList.remove('hidden');
+
+        const first = triggered[0];
+        const daysLeft = diffInCalendarDays(TODAY, parseLocalDate(first.dueDate));
+        const whenLabel = daysLeft === 0 ? 'сегодня' : (daysLeft === 1 ? 'завтра' : 'через 2 дня');
+        const extra = triggered.length > 1 ? ` (+ ещё ${triggered.length - 1})` : '';
+        textEl.textContent = `${first.type === 'exam' ? 'Контрольная' : 'Задание'}: «${first.title}» — сдача ${whenLabel}${extra}.`;
+      } else {
+        badge.classList.add('hidden');
+        box.classList.add('hidden');
+      }
+    }
+
+    function toggleNotificationDrawer(open) {
+      const drawer = document.getElementById('notificationDrawer');
+      if (open) {
+        updatePushPermissionUI();
+        renderNotificationsDrawer();
+        drawer.classList.remove('hidden');
+      } else {
+        drawer.classList.add('hidden');
+      }
+    }
+
+    function updatePushPermissionUI() {
+      const statusEl = document.getElementById('pushPermStatus');
+      if (!statusEl) return;
+      if (!('Notification' in window)) {
+        statusEl.textContent = 'Недоступно в окне превью';
+        statusEl.className = 'font-bold text-amber-300';
+      } else if (Notification.permission === 'granted') {
+        statusEl.textContent = 'Разрешены ✅';
+        statusEl.className = 'font-bold text-emerald-300';
+      } else if (Notification.permission === 'denied') {
+        statusEl.textContent = 'Заблокированы в браузере';
+        statusEl.className = 'font-bold text-rose-300';
+      } else {
+        statusEl.textContent = 'Не включены';
+        statusEl.className = 'font-bold text-amber-300';
+      }
+    }
+
+    async function enablePushNotifications() {
+      if (!('Notification' in window)) {
+        showPushBanner('Уведомления', 'Открой страницу в браузере телефона (Chrome/Safari) или добавь в календарь (.ics).');
+        return;
+      }
+      try {
+        const perm = await Notification.requestPermission();
+        updatePushPermissionUI();
+        if (perm === 'granted') {
+          await sendSystemNotification(
+            'Учебный планер — Пуши включены!',
+            'Теперь я буду предупреждать тебя за 2 дня до сдачи заданий и контрольных.'
+          );
+        } else {
+          showPushBanner('Доступ запрещён', 'Разреши уведомления в настройках сайта в браузере или используй «🔔 В календарь».');
+        }
+      } catch (e) {
+        showPushBanner('Подсказка', 'Используй кнопку «🔔 В календарь» на задаче для системного будильника за 2 дня.');
+      }
+    }
+
+    async function sendSystemNotification(title, body) {
+      showPushBanner(title, body);
+      if ('Notification' in window && Notification.permission === 'granted') {
+        if (swRegistration && swRegistration.showNotification) {
+          try {
+            await swRegistration.showNotification(title, {
+              body,
+              vibrate: [200, 100, 200],
+              tag: 'study-planner-alert'
+            });
+            return;
+          } catch (e) {}
+        }
+        try {
+          new Notification(title, { body });
+        } catch (e) {}
+      }
+    }
+
+    // Generates and downloads a real .ics Calendar Event with a 2-day advance alarm (TRIGGER:-P2D)
+    function downloadCalendarReminder(id) {
+      const task = state.tasks.find(t => t.id === id);
+      if (!task) return;
+
+      const dueObj = parseLocalDate(task.dueDate);
+      const y = dueObj.getFullYear();
+      const m = String(dueObj.getMonth() + 1).padStart(2, '0');
+      const d = String(dueObj.getDate()).padStart(2, '0');
+
+      const nextDay = addDays(dueObj, 1);
+      const ny = nextDay.getFullYear();
+      const nm = String(nextDay.getMonth() + 1).padStart(2, '0');
+      const nd = String(nextDay.getDate()).padStart(2, '0');
+
+      const prefix = task.type === 'exam' ? '📝 Контрольная: ' : '📘 Задание: ';
+      const summary = (prefix + task.title).replace(/[\r\n]+/g, ' ');
+      const nowStamp = new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+
+      const icsContent = [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//StudyPlanner//RU',
+        'CALSCALE:GREGORIAN',
+        'BEGIN:VEVENT',
+        `UID:${task.id}@studyplanner.local`,
+        `DTSTAMP:${nowStamp}`,
+        `DTSTART;VALUE=DATE:${y}${m}${d}`,
+        `DTEND;VALUE=DATE:${ny}${nm}${nd}`,
+        `SUMMARY:${summary}`,
+        'DESCRIPTION:Напоминание из Учебного планера (поставлено за 2 дня до сдачи).',
+        'BEGIN:VALARM',
+        'TRIGGER:-P2D',
+        'ACTION:DISPLAY',
+        `DESCRIPTION:Через 2 дня сдача: ${summary}`,
+        'END:VALARM',
+        'END:VEVENT',
+        'END:VCALENDAR'
+      ].join('\r\n');
+
+      const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `napominanie_${task.dueDate}.ics`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showPushBanner(
+        '📅 Файл календаря скачан',
+        'Открой скачанный файл — телефон поставит системный будильник за 2 дня до сдачи!'
+      );
+    }
+    }
+
+    function renderNotificationsDrawer() {
+      const container = document.getElementById('notificationsList');
+      const scheduled = getAllScheduled2DayAlerts();
+
+      if (scheduled.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-8 px-4 bg-surface-800/50 rounded-2xl border border-slate-800">
+            <p class="text-xs font-semibold text-slate-300">Нет активных напоминаний за 2 дня</p>
+            <p class="text-[11px] text-slate-500 mt-1">Скажи голосом «Предупреди за 2 дня», и уведомление появится здесь.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = scheduled.map(item => {
+        const dueObj = parseLocalDate(item.dueDate);
+        const triggerObj = addDays(dueObj, -2);
+        const daysLeft = diffInCalendarDays(TODAY, dueObj);
+        const isTriggeredNow = daysLeft >= 0 && daysLeft <= 2;
+
+        const statusBadge = isTriggeredNow
+          ? `<span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30">Активно сейчас</span>`
+          : `<span class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-700/70 text-slate-300">Сработает ${formatShortDate(triggerObj)}</span>`;
+
+        return `
+          <div class="bg-surface-800 border ${isTriggeredNow ? 'border-amber-400/40' : 'border-slate-700/70'} rounded-2xl p-3 flex items-start justify-between gap-2.5">
+            <div class="min-w-0">
+              <div class="flex items-center gap-1.5 flex-wrap mb-1">
+                <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${item.type === 'exam' ? 'bg-amber-500/20 text-amber-300' : 'bg-indigo-500/20 text-indigo-300'}">
+                  ${item.type === 'exam' ? 'Контрольная' : 'Задание'}
+                </span>
+                ${statusBadge}
+              </div>
+              <p class="text-xs font-bold text-white leading-snug">${escapeHtml(item.title)}</p>
+              <p class="text-[11px] text-slate-400 mt-1">Сдача: ${DAYS_FULL[getMondayIndex(dueObj)]}, ${formatShortDate(dueObj)}</p>
+            </div>
+            <button onclick="toggleTaskRemind('${item.id}'); renderNotificationsDrawer();" title="Отключить напоминание" class="text-slate-400 hover:text-rose-300 p-1.5 rounded-lg bg-surface-900">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+
+    let pushTimeout = null;
+    function showPushBanner(title, body) {
+      const banner = document.getElementById('pushBanner');
+      document.getElementById('pushTitle').textContent = title;
+      document.getElementById('pushBody').textContent = body;
+      banner.classList.remove('hidden');
+      banner.classList.add('toast-enter');
+
+      if (pushTimeout) clearTimeout(pushTimeout);
+      pushTimeout = setTimeout(() => {
+        hidePushBanner();
+      }, 5200);
+    }
+
+    function hidePushBanner() {
+      const banner = document.getElementById('pushBanner');
+      banner.classList.add('hidden');
+      banner.classList.remove('toast-enter');
+    }
+
+    function triggerTestPushNotification() {
+      const triggered = getTriggered2DayAlerts();
+      const target = triggered[0] || getAllScheduled2DayAlerts()[0];
+      const msg = target
+        ? `Через 2 дня сдача: «${target.title}» (${formatShortDate(parseLocalDate(target.dueDate))})`
+        : 'Напоминание за 2 дня до сдачи задания работает исправно!';
+
+      if ('Notification' in window && Notification.permission === 'default') {
+        enablePushNotifications();
+      } else {
+        sendSystemNotification('🔔 Напоминание за 2 дня', msg);
+      }
+    }
+
+    // =========================================================================
+    // RENDER FUNCTIONS (Top Monday Strip, Upcoming Tab, Weekly Schedule Tab)
+    // =========================================================================
+    function renderAll() {
+      renderTopWeekStrip();
+      renderUpcoming();
+      renderWeeklySchedule();
+      checkAndSurfaceAutoAlerts();
+
+      const hasDemo = state.tasks.some(t => t.isDemo);
+      const clearDemoBtn = document.getElementById('clearDemoBtn');
+      if (hasDemo) clearDemoBtn.classList.remove('hidden');
+      else clearDemoBtn.classList.add('hidden');
+    }
+
+    function renderTopWeekStrip() {
+      const baseMonday = getMondayOfWeek(TODAY);
+      const viewMonday = addDays(baseMonday, state.weekOffset * 7);
+      const viewSunday = addDays(viewMonday, 6);
+
+      const rangeText = `${viewMonday.getDate()} ${MONTHS_SHORT[viewMonday.getMonth()]} — ${viewSunday.getDate()} ${MONTHS_SHORT[viewSunday.getMonth()]}`;
+      document.getElementById('weekRangeLabel').textContent = rangeText;
+      const schRangeEl = document.getElementById('scheduleWeekRange');
+      if (schRangeEl) {
+        const tag = state.weekOffset === 0 ? ' (Текущая)' : (state.weekOffset === 1 ? ' (Следующая)' : '');
+        schRangeEl.textContent = rangeText + tag;
+      }
+
+      const stripEl = document.getElementById('weekStrip');
+      let html = '';
+
+      for (let i = 0; i < 7; i++) {
+        const dayObj = addDays(viewMonday, i);
+        const dateStr = getLocalDateStr(dayObj);
+        const isToday = dateStr === TODAY_STR;
+        const isSelected = dateStr === state.selectedDateStr;
+
+        const dayItems = state.tasks.filter(t => t.dueDate === dateStr && !t.completed);
+        const hasTask = dayItems.some(t => t.type === 'task');
+        const hasExam = dayItems.some(t => t.type === 'exam');
+
+        let cellClasses = 'flex flex-col items-center justify-center py-1.5 rounded-xl transition cursor-pointer select-none ';
+        if (isSelected) {
+          cellClasses += 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30';
+        } else if (isToday) {
+          cellClasses += 'bg-slate-700/70 text-white border border-indigo-400/50';
+        } else {
+          cellClasses += 'text-slate-300 hover:bg-slate-700/40';
+        }
+
+        html += `
+          <button onclick="selectDayFromStrip('${dateStr}')" class="${cellClasses}">
+            <span class="text-[10px] font-bold uppercase ${isSelected ? 'text-indigo-100' : (i >= 5 ? 'text-rose-300/80' : 'text-slate-400')}">${DAYS_SHORT[i]}</span>
+            <span class="text-xs font-extrabold mt-0.5">${dayObj.getDate()}</span>
+            <div class="flex items-center gap-0.5 h-1.5 mt-1">
+              ${hasTask ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-indigo-400'}"></span>` : ''}
+              ${hasExam ? `<span class="w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-amber-200' : 'bg-amber-400'}"></span>` : ''}
+            </div>
+          </button>
+        `;
+      }
+
+      stripEl.innerHTML = html;
+    }
+
+    function getRelativeDeadlineBadge(dueDateStr, completed) {
+      if (completed) {
+        return `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Выполнено</span>`;
+      }
+      const due = parseLocalDate(dueDateStr);
+      const diff = diffInCalendarDays(TODAY, due);
+
+      if (diff < 0) {
+        return `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30">Просрочено</span>`;
+      }
+      if (diff === 0) {
+        return `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-400/40">Сегодня</span>`;
+      }
+      if (diff === 1) {
+        return `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/40">Завтра</span>`;
+      }
+      if (diff === 2) {
+        return `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-400/40">Через 2 дня</span>`;
+      }
+      return `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">Через ${diff} дн.</span>`;
+    }
+
+    function renderUpcoming() {
+      const listEl = document.getElementById('upcomingList');
+
+      let filtered = [...state.tasks];
+      if (state.upcomingFilter !== 'all') {
+        filtered = filtered.filter(t => t.type === state.upcomingFilter);
+      }
+
+      // Sort: uncompleted first by nearest dueDate, then completed
+      filtered.sort((a, b) => {
+        if (a.completed !== b.completed) return a.completed ? 1 : -1;
+        return a.dueDate.localeCompare(b.dueDate);
+      });
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `
+          <div class="bg-surface-800/60 border border-dashed border-slate-700/80 rounded-2xl p-6 text-center">
+            <p class="text-sm font-bold text-slate-300">Нет ближайших заданий</p>
+            <p class="text-xs text-slate-500 mt-1">Нажми на микрофон выше и продиктуй, что и к какому дню недели нужно сделать.</p>
+          </div>
+        `;
+        return;
+      }
+
+      listEl.innerHTML = filtered.map(item => {
+        const dueObj = parseLocalDate(item.dueDate);
+        const dayName = DAYS_FULL[getMondayIndex(dueObj)];
+        const isExam = item.type === 'exam';
+
+        const typeBadge = isExam
+          ? `<span class="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-300 border border-amber-400/30">Контрольная работа</span>`
+          : `<span class="inline-flex items-center gap-1 text-[10px] font-extrabold uppercase tracking-wide px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300 border border-indigo-400/30">Задание</span>`;
+
+        const remindPill = item.remind2DaysBefore
+          ? `<button onclick="toggleTaskRemind('${item.id}')" title="Уведомление за 2 дня включено" class="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">За 2 дня</button>`
+          : `<button onclick="toggleTaskRemind('${item.id}')" title="Включить напоминание за 2 дня" class="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-md bg-slate-800 text-slate-400 hover:text-slate-200 border border-slate-700">Без алертов</button>`;
+
+        return `
+          <div class="bg-surface-800/95 border ${item.completed ? 'border-slate-800/80 opacity-60' : (isExam ? 'border-amber-500/30' : 'border-slate-700/80')} rounded-2xl p-3.5 transition shadow-sm">
+            <div class="flex items-start gap-3">
+              <!-- Checkbox -->
+              <button onclick="toggleTaskComplete('${item.id}')" aria-label="Отметить выполненным" class="mt-0.5 w-5 h-5 rounded-lg border-2 flex items-center justify-center shrink-0 transition ${item.completed ? 'bg-emerald-500 border-emerald-500 text-slate-950' : 'border-slate-500 hover:border-indigo-400'}">
+                ${item.completed ? `<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>` : ''}
+              </button>
+
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+                  ${typeBadge}
+                  ${getRelativeDeadlineBadge(item.dueDate, item.completed)}
+                </div>
+
+                <p class="text-sm font-bold text-white leading-snug ${item.completed ? 'line-through text-slate-400' : ''}">
+                  ${escapeHtml(item.title)}
+                </p>
+
+                <div class="flex items-center justify-between gap-1.5 mt-2.5 pt-2 border-t border-slate-700/50 flex-wrap">
+                  <span class="text-[11px] font-semibold text-slate-300">
+                    📅 ${dayName}, ${formatShortDate(dueObj)}
+                  </span>
+                  <div class="flex items-center gap-1.5">
+                    <button onclick="downloadCalendarReminder('${item.id}')" title="Скачать системный будильник в календарь телефона за 2 дня" class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/20 hover:bg-indigo-500/35 text-indigo-200 border border-indigo-400/35 transition">
+                      🔔 В календарь
+                    </button>
+                    ${remindPill}
+                    <button onclick="deleteTask('${item.id}')" aria-label="Удалить" class="p-1 text-slate-500 hover:text-rose-400 rounded-lg transition">
+                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderWeeklySchedule() {
+      const container = document.getElementById('weeklyDaysList');
+      const baseMonday = getMondayOfWeek(TODAY);
+      const viewMonday = addDays(baseMonday, state.weekOffset * 7);
+
+      let html = '';
+
+      for (let i = 0; i < 7; i++) {
+        const dayObj = addDays(viewMonday, i);
+        const dateStr = getLocalDateStr(dayObj);
+        const isToday = dateStr === TODAY_STR;
+        const isSelected = dateStr === state.selectedDateStr;
+
+        const dayItems = state.tasks.filter(t => t.dueDate === dateStr);
+
+        const cardBorder = isSelected
+          ? 'border-indigo-500/70 ring-1 ring-indigo-500/30'
+          : (isToday ? 'border-slate-600' : 'border-slate-800');
+
+        let itemsHtml = '';
+        if (dayItems.length === 0) {
+          itemsHtml = `
+            <div class="py-2 px-3 rounded-xl bg-surface-900/60 border border-slate-800/80 flex items-center justify-between">
+              <span class="text-xs text-slate-500 font-medium">Нет заданий</span>
+              <button onclick="openDayModal('${dateStr}')" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-semibold">+ Добавить</button>
+            </div>
+          `;
+        } else {
+          itemsHtml = `<div class="space-y-2">` + dayItems.map(item => {
+            const isExam = item.type === 'exam';
+            return `
+              <div class="p-2.5 rounded-xl bg-surface-900 border ${item.completed ? 'border-slate-800 opacity-60' : (isExam ? 'border-amber-500/35' : 'border-slate-700/70')} flex items-start gap-2.5">
+                <button onclick="toggleTaskComplete('${item.id}')" class="mt-0.5 w-4 h-4 rounded-md border-2 flex items-center justify-center shrink-0 ${item.completed ? 'bg-emerald-500 border-emerald-500 text-slate-950' : 'border-slate-500'}">
+                  ${item.completed ? `<svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="3" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>` : ''}
+                </button>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded ${isExam ? 'bg-amber-500/15 text-amber-300' : 'bg-indigo-500/15 text-indigo-300'}">
+                      ${isExam ? 'Контрольная работа' : 'Задание'}
+                    </span>
+                    ${item.remind2DaysBefore ? `<span class="text-[10px] text-emerald-300 font-semibold">• за 2 дня</span>` : ''}
+                  </div>
+                  <p class="text-xs font-bold text-slate-100 mt-1 ${item.completed ? 'line-through text-slate-400' : ''}">${escapeHtml(item.title)}</p>
+                  <div class="mt-1.5">
+                    <button onclick="downloadCalendarReminder('${item.id}')" class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/20 hover:bg-indigo-500/35 text-indigo-200 border border-indigo-400/35 transition">
+                      🔔 В календарь
+                    </button>
+                  </div>
+                </div>
+                <button onclick="deleteTask('${item.id}')" class="text-slate-500 hover:text-rose-400 p-1">
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+              </div>
+            `;
+          }).join('') + `</div>`;
+        }
+
+        html += `
+          <div id="day-card-${dateStr}" class="bg-surface-800/85 border ${cardBorder} rounded-2xl p-3 transition">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-extrabold ${i >= 5 ? 'text-rose-300' : 'text-white'}">${DAYS_FULL[i]}</span>
+                <span class="text-xs text-slate-400 font-medium">${formatShortDate(dayObj)}</span>
+                ${isToday ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-indigo-500/20 text-indigo-300">Сегодня</span>` : ''}
+              </div>
+              <button onclick="openDayModal('${dateStr}')" title="Добавить задание на ${DAYS_FULL[i]}" class="w-6 h-6 rounded-lg bg-surface-900 hover:bg-indigo-600 text-slate-300 hover:text-white flex items-center justify-center text-sm font-bold transition">
+                +
+              </button>
+            </div>
+            ${itemsHtml}
+          </div>
+        `;
+      }
+
+      container.innerHTML = html;
+    }
+
+    function escapeHtml(str) {
+      return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    window.onload = initApp;
+  </script>
+</body>
+</html>
